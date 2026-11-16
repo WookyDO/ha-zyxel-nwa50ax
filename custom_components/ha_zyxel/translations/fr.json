@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "Configuration du périphérique Zyxel",
-        "description": "Configurez votre point d'accès Zyxel NWA (ex. NWA50AX, NWA130BE). Laissez le nom vide pour utiliser \"Zyxel <modèle>\" ; donnez un nom distinct à chaque AP si vous en avez plusieurs du même modèle.",
+        "description": "Configurez votre point d'accès Zyxel NWA (ex. NWA50AX, NWA130BE). Laissez le nom vide pour utiliser le modèle détecté (ex. \"Zyxel NWA130BE\") ; donnez un nom distinct à chaque AP si vous en avez plusieurs du même modèle.",
         "data": {
           "host": "Adresse IP ou nom d'hôte",
           "username": "Nom d'utilisateur",

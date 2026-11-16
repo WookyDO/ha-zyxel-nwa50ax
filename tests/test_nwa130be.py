@@ -431,3 +431,21 @@ def test_make_fixtures_keeps_table_columns_and_placeholder():
     assert "  SSID: Home" in profiles
     assert "  SSID: Unconfigured" in profiles
     assert "  IPv4: 10.0.20.2" in profiles  # key: value lines are not padded
+
+
+def test_translations_have_no_markup_characters():
+    """The HA frontend parses '<...>' in translations as tags (UNCLOSED_TAG)."""
+    import json
+
+    base = Path(__file__).parent.parent / "custom_components" / "ha_zyxel"
+
+    def walk(node):
+        if isinstance(node, dict):
+            for value in node.values():
+                yield from walk(value)
+        elif isinstance(node, str):
+            yield node
+
+    for path in [base / "strings.json", *sorted((base / "translations").glob("*.json"))]:
+        for text in walk(json.loads(path.read_text(encoding="utf-8"))):
+            assert "<" not in text and ">" not in text, f"{path.name}: {text!r}"

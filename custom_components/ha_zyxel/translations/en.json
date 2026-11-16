@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "Configure Zyxel Device",
-        "description": "Configure your Zyxel NWA access point (e.g. NWA50AX, NWA130BE). Leave the name empty to use \"Zyxel <model>\"; give each AP its own name if you have several of the same model.",
+        "description": "Configure your Zyxel NWA access point (e.g. NWA50AX, NWA130BE). Leave the name empty to use the detected model (e.g. \"Zyxel NWA130BE\"); give each AP its own name if you have several of the same model.",
         "data": {
           "host": "IP Address or Hostname",
           "username": "Username",
