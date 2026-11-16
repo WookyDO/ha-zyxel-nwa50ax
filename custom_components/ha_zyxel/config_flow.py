@@ -1,4 +1,5 @@
 """Config flow for Zyxel integration."""
+import ipaddress
 import logging
 import voluptuous as vol
 
@@ -9,6 +10,9 @@ from homeassistant.helpers import selector
 
 from .const import (
     CONF_DAILY_INTERVAL,
+    CONF_DNS_ENABLED,
+    CONF_DNS_SERVER,
+    CONF_DNS_STRIP_DOMAIN,
     CONF_FAST_INTERVAL,
     CONF_HOST,
     CONF_ITEM_GROUP_PREFIX,
@@ -28,6 +32,7 @@ from .const import (
     CONF_USERNAME,
     DATA_ITEMS,
     DEFAULT_DAILY_INTERVAL,
+    DEFAULT_DNS_STRIP_DOMAIN,
     DEFAULT_FAST_INTERVAL,
     DEFAULT_HOST,
     DEFAULT_ITEM_GROUPS,
@@ -255,7 +260,7 @@ class OptionsFlow(config_entries.OptionsFlow):
         """Menu principal des options."""
         return self.async_show_menu(
             step_id="init",
-            menu_options=["intervals", "data_groups", "mikrotik", "security"],
+            menu_options=["intervals", "data_groups", "mikrotik", "dns", "security"],
         )
 
     async def async_step_intervals(self, user_input=None):
@@ -333,6 +338,32 @@ class OptionsFlow(config_entries.OptionsFlow):
             }),
         )
 
+    async def async_step_dns(self, user_input=None):
+        """Optional hostname resolver via reverse DNS (PTR) lookups."""
+        errors = {}
+        options = self.config_entry.options
+
+        if user_input is not None:
+            server = (user_input.get(CONF_DNS_SERVER) or "").strip()
+            if server and not is_valid_dns_server(server):
+                errors[CONF_DNS_SERVER] = "invalid_dns_server"
+            else:
+                return self._save({**user_input, CONF_DNS_SERVER: server})
+
+        current = user_input or options
+        return self.async_show_form(
+            step_id="dns",
+            data_schema=vol.Schema({
+                vol.Optional(CONF_DNS_ENABLED, default=current.get(CONF_DNS_ENABLED, False)): bool,
+                vol.Optional(CONF_DNS_SERVER, default=current.get(CONF_DNS_SERVER, "")): str,
+                vol.Optional(
+                    CONF_DNS_STRIP_DOMAIN,
+                    default=current.get(CONF_DNS_STRIP_DOMAIN, DEFAULT_DNS_STRIP_DOMAIN),
+                ): bool,
+            }),
+            errors=errors,
+        )
+
     async def async_step_security(self, user_input=None):
         """Empreintes SSH mémorisées (TOFU) - état + réinitialisation à la demande.
 
@@ -367,6 +398,15 @@ class OptionsFlow(config_entries.OptionsFlow):
                 "mikrotik_fingerprint": mikrotik_fp,
             },
         )
+
+
+def is_valid_dns_server(value: str) -> bool:
+    """A DNS server must be given as an IPv4/IPv6 address (no name lookup)."""
+    try:
+        ipaddress.ip_address(value)
+    except ValueError:
+        return False
+    return True
 
 
 class CannotConnect(HomeAssistantError):

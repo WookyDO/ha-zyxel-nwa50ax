@@ -47,6 +47,7 @@
           "intervals": "Refresh intervals",
           "data_groups": "Data assignment (fast/slow/daily)",
           "mikrotik": "MikroTik hostname resolver",
+          "dns": "Reverse DNS hostname resolver",
           "security": "Security (SSH fingerprints)"
         }
       },
@@ -85,6 +86,15 @@
           "mikrotik_refresh_interval": "MikroTik lease refresh interval (seconds)"
         }
       },
+      "dns": {
+        "title": "Reverse DNS hostname resolver",
+        "description": "Optional. Resolves device hostnames by reverse DNS (PTR) lookup of each client's IP address - useful when your router hands out DHCP leases and answers DNS for its LAN clients (e.g. a FRITZ!Box). Lookups run in the background with their own cache and never delay AP data collection. If the MikroTik resolver is also enabled, its names take priority.",
+        "data": {
+          "dns_enabled": "Enable reverse DNS hostname resolver",
+          "dns_server": "DNS server IP address (empty = Home Assistant system resolver)",
+          "dns_strip_domain": "Show only the first part of the name (printer instead of printer.example.lan)"
+        }
+      },
       "security": {
         "title": "Security - SSH fingerprints",
         "description": "SSH host key fingerprints are remembered on first connection (Trust On First Use) and checked on every connection afterwards. Current Zyxel fingerprint: {zyxel_fingerprint}. Current MikroTik fingerprint: {mikrotik_fingerprint}. Only reset a fingerprint if you know the key change is legitimate (device replaced/factory reset) - otherwise it could indicate someone intercepting the connection.",
@@ -93,6 +103,9 @@
           "reset_mikrotik_ssh_fingerprint": "Reset remembered MikroTik SSH fingerprint"
         }
       }
+    },
+    "error": {
+      "invalid_dns_server": "Enter a valid IPv4 or IPv6 address, or leave the field empty."
     }
   }
 }

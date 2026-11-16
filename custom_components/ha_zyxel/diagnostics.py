@@ -36,11 +36,18 @@ async def async_get_config_entry_diagnostics(hass: HomeAssistant, entry: ConfigE
             "daily_interval_seconds": daily.update_interval.total_seconds() if daily.update_interval else None,
             "item_groups": entry_data.get("item_groups"),
             "mikrotik_resolver_enabled": entry_data.get("resolver") is not None,
+            "dns_resolver_enabled": entry_data.get("dns_resolver") is not None,
         },
         "status": {
             "last_seen": last_seen.isoformat() if last_seen else None,
             **api.get_diagnostics_snapshot(),
         },
+        # Counters only: no hostnames, no IPs.
+        "dns_resolver": (
+            entry_data["dns_resolver"].get_diagnostics()
+            if entry_data.get("dns_resolver") is not None
+            else None
+        ),
         "coordinators": {
             "fast_last_update_success": fast.last_update_success,
             "slow_last_update_success": slow.last_update_success,

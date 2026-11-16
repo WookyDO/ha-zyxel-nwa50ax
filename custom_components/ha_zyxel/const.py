@@ -25,6 +25,12 @@ CONF_MIKROTIK_USERNAME = "mikrotik_username"
 CONF_MIKROTIK_PASSWORD = "mikrotik_password"
 CONF_MIKROTIK_REFRESH_INTERVAL = "mikrotik_refresh_interval"
 
+# Configuration - Reverse DNS (PTR) hostname resolver (optional, decoupled).
+# Empty server = Home Assistant's system resolver.
+CONF_DNS_ENABLED = "dns_enabled"
+CONF_DNS_SERVER = "dns_server"
+CONF_DNS_STRIP_DOMAIN = "dns_strip_domain"
+
 # Empreintes SSH mémorisées (TOFU - Trust On First Use). Stockées dans les
 # options de l'entry : ce sont des empreintes publiques (pas des secrets),
 # comparées à chaque connexion pour détecter un changement de clé côté AP ou
@@ -59,6 +65,16 @@ MAX_DAILY_INTERVAL = 604800
 DEFAULT_MIKROTIK_PORT = 22
 DEFAULT_MIKROTIK_REFRESH_INTERVAL = 300  # 5 minutes
 MIKROTIK_HOSTNAME_CACHE_TTL = 900        # 15 minutes - durée de vie d'une entrée en cache
+
+# Defaults - Reverse DNS resolver
+DEFAULT_DNS_STRIP_DOMAIN = True
+DNS_PORT = 53
+DNS_QUERY_TIMEOUT = 1.0           # seconds, UDP query to a configured server
+DNS_SYSTEM_QUERY_TIMEOUT = 5.0    # seconds, socket.gethostbyaddr in the executor
+DNS_POSITIVE_CACHE_TTL = 3600     # a resolved name is re-checked after 1 hour
+DNS_NEGATIVE_CACHE_TTL = 300      # no name / failure is retried after 5 minutes
+DNS_MAX_CONCURRENT_QUERIES = 4    # hard cap on simultaneous lookups
+DNS_CACHE_MAX_ENTRIES = 1024
 
 # Priorités de la file d'attente SSH vers l'AP Zyxel.
 # Plus la valeur est basse, plus l'opération est traitée en premier.

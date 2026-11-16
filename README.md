@@ -43,7 +43,7 @@ Numeric/boolean sensors report `unknown` (not `0` / `False`) when a value could 
 ### Device tracker
 - One entity per WiFi client ever seen, created dynamically as they connect
 - Presence uses a grace period (anti-flapping) so a phone's WiFi power-saving doesn't cause spurious home/away flips
-- Display name uses the resolved hostname (see MikroTik resolver below); if two known devices share the same generic hostname (e.g. two "iPhone"), a short MAC-based suffix is added automatically to tell them apart
+- Display name uses the resolved hostname (see the MikroTik and reverse DNS resolvers below); if two known devices share the same generic hostname (e.g. two "iPhone"), a short MAC-based suffix is added automatically to tell them apart
 - Attach these to a HA `Person` to get presence-based automations for free
 
 ### Button
@@ -51,7 +51,7 @@ Numeric/boolean sensors report `unknown` (not `0` / `False`) when a value could 
 - One manual refresh button per refresh group (fast/slow/daily) - jumps ahead of the scheduled automatic refresh
 
 ### Diagnostics
-Available from the integration's device page ("Download diagnostics"). Contains model/firmware, configured intervals, data-group assignment, last-seen timestamp, and connection health counters. Never contains passwords, client MAC/IP addresses, or SSID names.
+Available from the integration's device page ("Download diagnostics"). Contains model/firmware, configured intervals, data-group assignment, last-seen timestamp, connection health counters and, if enabled, reverse DNS resolver counters (cache size, hits, misses, errors, last error type). Never contains passwords, client MAC/IP addresses, or SSID names.
 
 ## Requirements
 
@@ -105,7 +105,21 @@ Change any of these freely - a change takes effect immediately (the integration 
 ### MikroTik hostname resolver (optional)
 If your DHCP server is a MikroTik router rather than the AP itself, enable this to resolve WiFi client hostnames from `/ip dhcp-server lease print`. It has its own SSH connection, its own refresh cycle and its own cache - completely decoupled from the Zyxel connection, so a MikroTik outage never affects AP data collection.
 
-Why MikroTik and not a plain reverse-DNS lookup: in a setup where the router itself is the DNS resolver clients talk to (forwarding upstream to something like AdGuard/Pi-hole), reverse DNS on the LAN typically has no records for internal clients, and the upstream resolver never even sees individual client IPs. The DHCP lease table is the actual source of truth for "which device has this name."
+Why MikroTik and not a plain reverse-DNS lookup: in a setup where the router itself is the DNS resolver clients talk to (forwarding upstream to something like AdGuard/Pi-hole), reverse DNS on the LAN typically has no records for internal clients, and the upstream resolver never even sees individual client IPs. The DHCP lease table is the actual source of truth for "which device has this name." If your router does answer reverse DNS for its clients, the simpler reverse DNS resolver below does the job without SSH credentials.
+
+### Reverse DNS hostname resolver (optional)
+Resolves WiFi client hostnames with a reverse DNS (PTR) lookup of each client's IP address. Use it when the router that hands out DHCP leases also answers DNS for its LAN clients - for example a FRITZ!Box, which answers `name.fritz.box` for every DHCP client. No SSH access and no credentials are needed.
+
+Options:
+- **Enable** - off by default; existing installations are unchanged until you turn it on.
+- **DNS server** - leave empty to use Home Assistant's system resolver, or enter the IP address of the server to ask directly (e.g. the FRITZ!Box's own LAN address). A direct query is a single UDP packet with a 1-second timeout.
+- **Show only the first part of the name** - on by default: `printer.fritz.box` is shown as `printer`.
+
+Lookups run in the background with their own cache (a found name is re-checked after 1 hour, a missing one after 5 minutes, at most 4 lookups at a time) and never delay or fail AP data collection; a DNS outage keeps the names already known. Clients without an IP address (`0.0.0.0`) are skipped. A newly seen client gets its name shortly after it first appears, without waiting for the next refresh.
+
+**Which one to use:** MikroTik if your DHCP server is a MikroTik router whose DNS does not know the clients; reverse DNS if your router publishes DHCP hostnames in DNS (FRITZ!Box, OpenWrt/dnsmasq, Pi-hole as DHCP server, ...). If both are enabled, the MikroTik name wins and reverse DNS fills in the clients MikroTik does not know.
+
+Enabling a resolver only changes the display name of device trackers; their entity IDs and unique IDs never change once created.
 
 ### Security - SSH fingerprints
 Both the Zyxel and (if enabled) MikroTik SSH connections use Trust On First Use: the host key fingerprint is memorized on first connection and compared on every connection afterward, rather than blindly accepted every time (`AutoAddPolicy`). If the fingerprint ever changes, the connection is refused with a clear error - this could mean the device was legitimately replaced/factory-reset, or it could mean something is intercepting the connection on your LAN.

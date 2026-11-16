@@ -5,13 +5,16 @@ from datetime import timedelta
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.util import dt as dt_util
 
 from .const import (
     CONF_DAILY_INTERVAL,
+    CONF_DNS_ENABLED,
+    CONF_DNS_SERVER,
+    CONF_DNS_STRIP_DOMAIN,
     CONF_FAST_INTERVAL,
     CONF_HOST,
     CONF_ITEM_GROUP_PREFIX,
@@ -29,6 +32,7 @@ from .const import (
     DATA_ITEM_CLIENTS,
     DATA_ITEMS,
     DEFAULT_DAILY_INTERVAL,
+    DEFAULT_DNS_STRIP_DOMAIN,
     DEFAULT_FAST_INTERVAL,
     DEFAULT_ITEM_GROUPS,
     DEFAULT_MIKROTIK_REFRESH_INTERVAL,
@@ -37,6 +41,7 @@ from .const import (
     PRESENCE_GRACE_MIN_SECONDS,
     PRESENCE_GRACE_MULTIPLIER,
 )
+from .dns_resolver import DnsHostnameResolver, chain_hostname_lookups, fill_missing_hostnames
 from .mikrotik_resolver import MikrotikHostnameResolver
 from .presence import PresenceTracker
 from .ssh_security import SSHHostKeyChangedError
@@ -122,6 +127,17 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         )
     )
 
+    # Optional reverse DNS (PTR) hostname resolver - decoupled like the
+    # MikroTik one: lookups run as background tasks, the AP refresh only
+    # reads its cache and never waits for DNS.
+    dns_resolver = None
+    if entry.options.get(CONF_DNS_ENABLED, False):
+        dns_resolver = DnsHostnameResolver(
+            hass,
+            server=entry.options.get(CONF_DNS_SERVER),
+            strip_domain=entry.options.get(CONF_DNS_STRIP_DOMAIN, DEFAULT_DNS_STRIP_DOMAIN),
+        )
+
     def _touch_last_seen() -> None:
         shared_state["last_seen"] = dt_util.now()
 
@@ -151,6 +167,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             # l'utilisateur à n'importe quel groupe.
             if "clients" in data:
                 presence_tracker.update(data["clients"])
+                if dns_resolver is not None:
+                    dns_resolver.async_request(client.get("ip") for client in data["clients"])
             if data.get("device_info"):
                 shared_state["device_info"] = data["device_info"]
             return data
@@ -220,6 +238,27 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 "Résolveur MikroTik activé mais configuration incomplète (host/user/password) - ignoré"
             )
 
+    if dns_resolver is not None:
+        # MikroTik (explicitly configured DHCP source) wins over DNS.
+        hostname_lookup = chain_hostname_lookups(
+            resolver.get_hostname if resolver else None, dns_resolver.get_hostname
+        )
+        api.set_hostname_resolver(hostname_lookup)
+
+        @callback
+        def _async_dns_names_updated() -> None:
+            """Apply freshly resolved names to the current client list
+            without waiting for the next AP refresh (never overwrites a
+            hostname that is already set, e.g. by MikroTik)."""
+            clients_coordinator = coordinator_for_item[DATA_ITEM_CLIENTS]
+            clients = (clients_coordinator.data or {}).get("clients")
+            if fill_missing_hostnames(clients, hostname_lookup):
+                clients_coordinator.async_update_listeners()
+
+        dns_resolver.set_update_callback(_async_dns_names_updated)
+        # Lookups started during the first refresh may already be done.
+        _async_dns_names_updated()
+
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][entry.entry_id] = {
         "api": api,
@@ -232,6 +271,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         "presence_tracker": presence_tracker,
         "radio_lock": radio_lock,
         "resolver": resolver,
+        "dns_resolver": dns_resolver,
         "unsub_listeners": [],
     }
 
@@ -258,6 +298,10 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         resolver = data.get("resolver")
         if resolver:
             await resolver.async_shutdown()
+
+        dns_resolver = data.get("dns_resolver")
+        if dns_resolver:
+            await dns_resolver.async_shutdown()
 
     return unload_ok
 
