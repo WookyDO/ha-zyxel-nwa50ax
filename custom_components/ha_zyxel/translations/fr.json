@@ -47,6 +47,7 @@
           "intervals": "Intervalles de rafraîchissement",
           "data_groups": "Répartition des données (rapide/lent/quotidien)",
           "mikrotik": "Résolveur de noms MikroTik",
+          "dns": "Résolveur de noms par DNS inverse",
           "security": "Sécurité (empreintes SSH)"
         }
       },
@@ -85,6 +86,15 @@
           "mikrotik_refresh_interval": "Intervalle de rafraîchissement des baux MikroTik (secondes)"
         }
       },
+      "dns": {
+        "title": "Résolveur de noms par DNS inverse",
+        "description": "Optionnel. Résout les noms d'appareils par requête DNS inverse (PTR) sur l'adresse IP de chaque client - utile quand le routeur distribue les baux DHCP et répond au DNS pour ses clients du LAN (ex. une FRITZ!Box). Les requêtes tournent en arrière-plan avec leur propre cache et ne retardent jamais la récupération des données de l'AP. Si le résolveur MikroTik est aussi activé, ses noms sont prioritaires.",
+        "data": {
+          "dns_enabled": "Activer le résolveur de noms par DNS inverse",
+          "dns_server": "Adresse IP du serveur DNS (vide = résolveur système de Home Assistant)",
+          "dns_strip_domain": "N'afficher que la première partie du nom (printer au lieu de printer.example.lan)"
+        }
+      },
       "security": {
         "title": "Sécurité - empreintes SSH",
         "description": "Les empreintes de clé hôte SSH sont mémorisées à la première connexion (Trust On First Use) et vérifiées à chaque connexion suivante. Empreinte Zyxel actuelle : {zyxel_fingerprint}. Empreinte MikroTik actuelle : {mikrotik_fingerprint}. Ne réinitialise une empreinte que si tu es certain que le changement est légitime (remplacement de l'appareil, reset usine) - sinon cela pourrait signaler une interception de la connexion.",
@@ -93,6 +103,9 @@
           "reset_mikrotik_ssh_fingerprint": "Réinitialiser l'empreinte SSH MikroTik mémorisée"
         }
       }
+    },
+    "error": {
+      "invalid_dns_server": "Saisis une adresse IPv4 ou IPv6 valide, ou laisse le champ vide."
     }
   }
 }
